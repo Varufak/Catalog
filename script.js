@@ -4,7 +4,7 @@ let priceList = [
     {id: '2', name: 'Хлеб', price: 56},
     {id: '3', name: 'Чебупели', price: 169}
 ]
-let totalPrice = 0;
+let basket = new Map(Object.entries(JSON.parse(localStorage.getItem('basketData') ?? '{}')));
 
 document.addEventListener("DOMContentLoaded", ready);
 
@@ -52,32 +52,75 @@ function ready() {
 }
 
 function addToBasketHandler(event) {
-    const tableElement = document.querySelector('#basket');
+    let quantity = 1;
 
     const button = event.target;
     const itemId = button.dataset.id;
-    const product = getProduct(itemId);
+    if(basket.has(itemId)){
+        quantity = basket.get(itemId) + 1;
+    }
+    basket.set(itemId, quantity);
+    updateLocalStorage();
+    fillBasket();
+}
 
-    const itemName = product.name;
-    const itemPrice = product.price;
+function updateLocalStorage(){
+    let basketObject = Object.fromEntries(basket);
+    let basketJson = JSON.stringify(basketObject);
+    localStorage.setItem('basketData', basketJson);
+}
 
-    const nameCell = document.createElement('td');
-    const priceCell = document.createElement('td');
+function fillBasket(){
+    const tableElement = document.querySelector('#basket');
+    let totalPrice = 0;
 
-    nameCell.className = 'product-name';
-    priceCell.className = 'product-price';
+    tableElement.innerHTML = '<tr><th>Наим. товара</th><th>Кол-во</th><th>Цена/руб.</th><th></th></tr>';
 
-    nameCell.innerHTML = itemName;
-    priceCell.innerHTML = itemPrice;
 
-    const newRow = document.createElement('tr');
-    newRow.append(nameCell);
-    newRow.append(priceCell);
+    for(let itemId of Array.from(basket.keys())){
+        const product = getProduct(itemId);
 
-    tableElement.append(newRow);
+        const itemName = product.name;
+        const itemQuantity = basket.get(itemId);
+        const itemPrice = product.price;
+        
+        const nameCell = document.createElement('td');
+        const quantityCell = document.createElement('td');
+        const priceCell = document.createElement('td');
+        const buttonsCell = document.createElement('td');
+    
+        nameCell.className = 'product-name';
+        quantityCell.className = 'product-quantity'
+        priceCell.className = 'product-price';
+        buttonsCell.className = 'product-buttons';
+        buttonsCell.align = 'center';
+    
+        nameCell.innerHTML = itemName;
+        quantityCell.innerHTML = itemQuantity;
+        priceCell.innerHTML = itemPrice;
+    
+        const deleteFromBasketButton = document.createElement('button');
+        deleteFromBasketButton.dataset.id = itemId;
+        deleteFromBasketButton.innerHTML = '-';
+        deleteFromBasketButton.addEventListener('click', deleteFromBasketHandler);
+    
+        const buttonText = document.createElement('div');
+        buttonText.innerHTML = 'Удалить из корзины';
+            
+        buttonsCell.append(deleteFromBasketButton);
+        buttonsCell.append(buttonText);
+        
+        const newRow = document.createElement('tr');
+        newRow.append(nameCell);
+        newRow.append(quantityCell);
+        newRow.append(priceCell);
+        newRow.append(buttonsCell);
+    
+        tableElement.append(newRow);
+        totalPrice += itemPrice * itemQuantity;
+    }
 
     let total = document.querySelector('#total');
-    totalPrice += itemPrice;
     total.innerHTML = totalPrice;
 }
 
@@ -85,3 +128,13 @@ function getProduct(itemId) {
     let item = priceList.find(element => element.id === itemId);
     return item;
 }
+
+function deleteFromBasketHandler(event){
+    const button = event.target;
+    const itemId = button.dataset.id;
+    basket.delete(itemId);
+    updateLocalStorage();
+    fillBasket();
+}
+
+fillBasket();
